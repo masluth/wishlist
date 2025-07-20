@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wishlist Keren</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+    .checked span {
+      text-decoration: line-through;
+      color: #9ca3af; /* text-gray-400 */
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center px-4">
+
+  <div class="w-full max-w-3xl mx-auto p-6 bg-gray-800 rounded-lg shadow-lg">
+    <h1 class="text-3xl font-bold mb-6 text-center">🎁 Wishlist Impian</h1>
+
+    <!-- Form -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <input id="itemName" type="text" placeholder="Nama barang"
+        class="p-2 rounded bg-gray-700 text-white focus:outline-none" />
+      <input id="itemPrice" type="text" placeholder="Harga (Rp)"
+        oninput="formatRupiah(this)"
+        class="p-2 rounded bg-gray-700 text-white focus:outline-none" />
+      <input id="itemLink" type="url" placeholder="Link pembelian (https://)"
+        class="p-2 rounded bg-gray-700 text-white focus:outline-none" />
+    </div>
+    <button onclick="addItem()" class="bg-blue-600 hover:bg-blue-700 w-full py-2 rounded text-white font-semibold mb-6">+ Tambahkan ke Wishlist</button>
+
+    <!-- Wishlist -->
+    <ul id="wishlist" class="space-y-3">
+      <!-- Item akan muncul di sini -->
+    </ul>
+  </div>
+
+  <script>
+    // Format input harga ke Rupiah dengan titik ribuan
+    function formatRupiah(input) {
+      let value = input.value.replace(/\D/g, '');
+      value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      input.value = value;
+    }
+
+    // Data wishlist global
+    let wishlistData = [];
+
+    // Simpan data ke localStorage
+    function saveData() {
+      localStorage.setItem('wishlistData', JSON.stringify(wishlistData));
+    }
+
+    // Load data dari localStorage saat halaman dibuka
+    function loadData() {
+      const saved = localStorage.getItem('wishlistData');
+      if (saved) {
+        try {
+          wishlistData = JSON.parse(saved);
+        } catch(e) {
+          wishlistData = [];
+        }
+      }
+      renderList();
+    }
+
+    // Render ulang list dari data wishlistData
+    function renderList() {
+      const list = document.getElementById('wishlist');
+      list.innerHTML = '';
+
+      wishlistData.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = "flex flex-col md:flex-row md:items-center md:justify-between bg-gray-700 p-4 rounded transition-all";
+        if (item.checked) li.classList.add('checked');
+
+        li.innerHTML = `
+          <div class="flex items-start gap-3 flex-1">
+            <input type="checkbox" class="mt-1 accent-green-500" ${item.checked ? 'checked' : ''} onchange="toggleChecked(${index}, this)">
+            <div class="details">
+              <div class="text-lg font-semibold mb-1">
+                <span contenteditable="false" onblur="editField(${index}, 'name', this.textContent)">${item.name}</span>
+              </div>
+              <div class="text-sm text-gray-300 mb-1">Rp 
+                <span contenteditable="false" onblur="editField(${index}, 'price', this.textContent)">${parseInt(item.price).toLocaleString('id-ID')}</span>
+              </div>
+              <a href="${item.link}" target="_blank" class="inline-block mt-1 text-blue-400 hover:underline" contenteditable="false" onblur="editField(${index}, 'link', this.textContent)">
+                🔗 Beli Sekarang
+              </a>
+            </div>
+          </div>
+          <div class="flex gap-3 mt-3 md:mt-0 md:ml-4">
+            <button onclick="enableEdit(${index})" class="text-yellow-300" title="Edit"><i data-feather="edit-2"></i></button>
+            <button onclick="deleteItem(${index})" class="text-red-400" title="Delete"><i data-feather="trash-2"></i></button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+      feather.replace();
+    }
+
+    // Tambah item baru ke wishlist
+    function addItem() {
+      const nameInput = document.getElementById("itemName");
+      const priceInput = document.getElementById("itemPrice");
+      const linkInput = document.getElementById("itemLink");
+
+      const name = nameInput.value.trim();
+      const priceRaw = priceInput.value.trim();
+      const link = linkInput.value.trim();
+      const price = priceRaw.replace(/\./g, '');
+
+      if (name === "" || price === "" || link === "") {
+        alert("Isi semua kolom terlebih dahulu!");
+        return;
+      }
+
+      wishlistData.push({
+        name,
+        price: price,
+        link,
+        checked: false
+      });
+
+      saveData();
+      renderList();
+
+      // Clear form
+      nameInput.value = "";
+      priceInput.value = "";
+      linkInput.value = "";
+    }
+
+    // Hapus item berdasarkan index
+    function deleteItem(index) {
+      wishlistData.splice(index, 1);
+      saveData();
+      renderList();
+    }
+
+    // Toggle checked/unchecked dan update data
+    function toggleChecked(index, checkbox) {
+      wishlistData[index].checked = checkbox.checked;
+      saveData();
+      renderList();
+    }
+
+    // Aktifkan edit (biarkan konten bisa diedit, dengan fokus)
+    function enableEdit(index) {
+      const list = document.getElementById('wishlist');
+      const li = list.children[index];
+      const spans = li.querySelectorAll('span, a');
+      spans.forEach(el => {
+        el.contentEditable = true;
+        el.focus();
+        // Fokus ke elemen pertama saja
+        if (el === spans[0]) {
+          el.focus();
+        }
+        el.addEventListener('blur', () => {
+          el.contentEditable = false;
+          // Simpan perubahan setelah edit blur (onblur)
+          const key = el.getAttribute('onblur').match(/'(.+?)'/)[1]; // dapat key field
+          editField(index, key, el.textContent);
+        }, { once: true });
+      });
+    }
+
+    // Edit field pada data, simpan ke wishlistData dan localStorage
+    // key adalah salah satu dari: 'name', 'price', 'link'
+    function editField(index, key, value) {
+      if (key === 'price') {
+        // hapus titik dan ambil angka saja
+        value = value.replace(/\./g, '').replace(/\D/g, '');
+        if (value === '') value = '0';
+      }
+      wishlistData[index][key] = value;
+      saveData();
+      renderList();
+    }
+
+    // Load data saat halaman siap
+    window.addEventListener('DOMContentLoaded', () => {
+      loadData();
+    });
+  </script>
+</body>
+</html>
